@@ -1,0 +1,28 @@
+
+:80 {
+
+  @options {
+    method OPTIONS
+  }
+
+  # Handle CORS preflight requests
+  handle @options {
+    header Access-Control-Allow-Origin "*"
+    header Access-Control-Max-Age "3600"
+    header Access-Control-Expose-Headers "Content-Length"
+    header Access-Control-Allow-Headers "*"
+    respond "" 200
+  }
+
+  # Handle all other requests
+  handle {
+    header Access-Control-Allow-Origin "*"
+    header Access-Control-Max-Age "3600"
+    header Access-Control-Expose-Headers "Content-Length"
+    header Access-Control-Allow-Headers "*"
+    reverse_proxy http://100.98.146.106:3903 {
+      header_up X-Forwarded-For {remote_host}
+      header_up Host {host}
+    }
+  }
+}
