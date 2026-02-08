@@ -3,6 +3,34 @@ export type KeyListItem = {
   name?: string | null
 }
 
+export type KeyDetails = {
+  id: string
+  name?: string | null
+  permissions: {
+    createBucket: boolean
+  }
+  buckets: Array<{
+    id: string
+    globalAliases?: string[]
+    localAliases?: Array<any>
+    permissions: {
+      read: boolean
+      write: boolean
+      owner: boolean
+    }
+  }>
+}
+
+export type KeyCreateResponse = {
+  name?: string | null
+  accessKeyId: string
+  secretAccessKey: string
+  permissions?: {
+    createBucket: boolean
+  }
+  buckets: Array<any>
+}
+
 export type BucketListItem = {
   id: string
   globalAliases?: string[]
@@ -40,11 +68,4 @@ export type BucketDetails = {
   }
 }
 
-export type KeyCreateResponse = {
-  name?: string | null
-  accessKeyId: string
-  secretAccessKey: string
-  permissions?: {
-    createBucket: boolean
-  }
-}
+

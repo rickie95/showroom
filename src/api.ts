@@ -1,79 +1,381 @@
-const baseUrl = (import.meta.env.VITE_BASE_URL || '').replace(/\/$/, '')
-const authToken = import.meta.env.VITE_AUTH_TOKEN || ''
+import axios from "axios";
+import type { HealthInfo, Bucket, BucketDetails } from "./model";
+import type { KeyCreateResponse, KeyDetails, KeyListItem } from "./types";
 
-type RequestOptions = Omit<RequestInit, 'headers'> & {
-  headers?: Record<string, string>
+const baseUrl = (import.meta.env.VITE_BASE_URL || "").replace(/\/$/, "");
+const authToken = import.meta.env.VITE_AUTH_TOKEN || "";
+
+type RequestOptions = Omit<RequestInit, "headers"> & {
+  headers?: Record<string, string>;
+};
+
+export class AppError extends Error {
+  status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+export class NotFoundError extends AppError {
+  constructor(message: string) {
+    super(message, 404);
+  }
+}
+
+interface GarageApiClient {
+  getHealth(): Promise<HealthInfo>;
+  getBuckets(): Promise<Bucket[]>;
+  getBucketDetails(bucketId: string): Promise<BucketDetails>;
+  createBucket?(bucketId: string): Promise<BucketDetails>;
+  addKeyToBucket?(
+    bucketId: string,
+    keyId: string,
+    read: boolean,
+    write: boolean,
+    owner: boolean,
+  ): Promise<BucketDetails>;
+  getKeys(): Promise<KeyListItem[]>;
+  getKeyDetails(keyId: string): Promise<KeyDetails>;
+  createKey(name?: string | null): Promise<KeyCreateResponse>;
+  updateKeyPermissions(keyId: string, canCreateBucket: boolean): Promise<KeyDetails>;
+  deleteKey?(keyId: string): Promise<void>;
+}
+
+export class GarageApiV1Client implements GarageApiClient {
+  public async getHealth(): Promise<HealthInfo> {
+    const response = await axios.get(`${baseUrl}/v1/health`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+
+    if (response.status !== 200) {
+      const message =
+        response.data?.message || `Request failed with ${response.status}`;
+      throw new AppError(message, response.status);
+    }
+
+    return {
+      status: response.data.status,
+      knownNodes: response.data.knownNodes,
+      connectedNodes: response.data.connectedNodes,
+      storageNodes: response.data.storageNodes,
+      storageNodesOk: response.data.storageNodesOk,
+    } as HealthInfo;
+  }
+
+  public async getBuckets(): Promise<Bucket[]> {
+    const response = await axios.get(`${baseUrl}/v1/bucket?list`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+
+    if (response.status !== 200) {
+      const message =
+        response.data?.message || `Request failed with ${response.status}`;
+      throw new AppError(message);
+    }
+
+    return response.data.map((bucket: any) => ({
+      id: bucket.id,
+      globalAliases: bucket.globalAliases,
+      localAliases: bucket.localAliases,
+    })) as Bucket[];
+  }
+
+  public async getBucketDetails(bucketId: string): Promise<BucketDetails> {
+    const response = await axios.get(`${baseUrl}/v1/bucket?id=${bucketId}`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+
+    if (response.status === 404) {
+      throw new NotFoundError(`Bucket with id ${bucketId} not found`);
+    }
+
+    if (response.status !== 200) {
+      const message =
+        response.data?.message || `Request failed with ${response.status}`;
+      throw new AppError(message, response.status);
+    }
+
+    return {
+      id: response.data.id,
+      globalAliases: response.data.globalAliases,
+      localAliases: response.data.localAliases,
+      websiteAccess: response.data.websiteAccess,
+      keys: response.data.keys,
+      objects: response.data.objects,
+      bytes: response.data.bytes,
+      quotas: response.data.quotas,
+    } as BucketDetails;
+  }
+
+  public async createBucket(bucketId: string): Promise<BucketDetails> {
+    const response = await axios.post(
+      `${baseUrl}/v1/bucket`,
+      { id: bucketId },
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    if (response.status !== 200) {
+      const message =
+        response.data?.message || `Request failed with ${response.status}`;
+      throw new AppError(message, response.status);
+    }
+
+    return {
+      id: response.data.id,
+      globalAliases: response.data.globalAliases,
+      localAliases: response.data.localAliases,
+      websiteAccess: response.data.websiteAccess,
+      keys: response.data.keys,
+      objects: response.data.objects,
+      bytes: response.data.bytes,
+      quotas: response.data.quotas,
+    } as BucketDetails;
+  }
+
+  public async addKeyToBucket(
+    bucketId: string,
+    keyId: string,
+    read: boolean,
+    write: boolean,
+    owner: boolean,
+  ): Promise<BucketDetails> {
+    const response = await axios.post(`${baseUrl}/v1/bucket/allow`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        "Content-Type": "application/json",
+      },
+      data: {
+        bucketId: bucketId,
+        accessKeyId: keyId,
+        permissions: {
+          read: read,
+          write: write,
+          owner: owner,
+        },
+      },
+    });
+
+    if (response.status !== 200) {
+      const message =
+        response.data?.message || `Request failed with ${response.status}`;
+      throw new AppError(message, response.status);
+    }
+
+    return {
+      id: response.data.id,
+      globalAliases: response.data.globalAliases,
+      localAliases: response.data.localAliases,
+      websiteAccess: response.data.websiteAccess,
+      keys: response.data.keys,
+      objects: response.data.objects,
+      bytes: response.data.bytes,
+      quotas: response.data.quotas,
+    } as BucketDetails;
+  }
+
+  public async getKeys(): Promise<KeyListItem[]> {
+    const response = await axios.get(`${baseUrl}/v1/key?list`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+
+    if (response.status !== 200) {
+      const message =
+        response.data?.message || `Request failed with ${response.status}`;
+      throw new AppError(message, response.status);
+    }
+
+    return response.data.map((key: any) => ({
+      id: key.id,
+      name: key.name,
+    })) as KeyListItem[];
+  }
+
+  public async getKeyDetails(keyId: string): Promise<KeyDetails> {
+    const response = await axios.get(`${baseUrl}/v1/key?id=${keyId}`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+
+    if (response.status === 404) {
+      throw new NotFoundError(`Key with id ${keyId} not found`);
+    }
+
+    if (response.status !== 200) {
+      const message =
+        response.data?.message || `Request failed with ${response.status}`;
+      throw new AppError(message, response.status);
+    }
+
+    return {
+      id: response.data.id,
+      name: response.data.name,
+      permissions: response.data.permissions,
+      buckets: response.data.buckets,
+    } as KeyDetails;
+  }
+
+  public async createKey(name?: string | null): Promise<KeyCreateResponse> {
+    const response = await axios.post(
+      `${baseUrl}/v1/key`,
+      {
+        name: name,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    if (response.status !== 200) {
+      const message =
+        response.data?.message || `Request failed with ${response.status}`;
+      throw new AppError(message, response.status);
+    }
+
+    return {
+      name: response.data.name,
+      accessKeyId: response.data.accessKeyId,
+      secretAccessKey: response.data.secretAccessKey,
+      permissions: response.data.permissions,
+      buckets: response.data.buckets,
+    } as KeyCreateResponse;
+  }
+
+  public async updateKeyPermissions(
+    keyId: string,
+    canCreateBucket: boolean,
+  ): Promise<KeyDetails> {
+    const requestBody = {
+      allow: canCreateBucket ? { createBucket: true } : null,
+      deny: canCreateBucket ? null : { createBucket: true },
+    };
+
+    const response = await axios.post(
+      `${baseUrl}/v1/key?${keyId}`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    if (response.status !== 200) {
+      const message =
+        response.data?.message || `Request failed with ${response.status}`;
+      throw new AppError(message, response.status);
+    }
+
+    return {
+      id: response.data.id,
+      name: response.data.name,
+      permissions: response.data.permissions,
+      buckets: response.data.buckets,
+    } as KeyDetails;
+  }
+
+  public async deleteKey(keyId: string): Promise<void> {
+    const response = await axios.delete(`${baseUrl}/v1/key?id=${keyId}`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+
+    if (response.status !== 204) {
+      const message =
+      response.data?.message || `Request failed with ${response.status}`;
+      console.log(`Failed to delete key ${keyId}: ${message}`);
+      throw new AppError(message, response.status);
+    }
+  }
 }
 
 function buildUrl(path: string) {
   if (!baseUrl) {
-    return path
+    return path;
   }
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    return path
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
   }
-  return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`
+  return `${baseUrl}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 
 async function requestJson<T>(path: string, options: RequestOptions = {}) {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${authToken}`,
     ...options.headers,
-  }
+  };
 
   const response = await fetch(buildUrl(path), {
     ...options,
     headers,
-  })
+  });
 
   if (!response.ok) {
-    const message = await response.text().catch(() => '')
-    const error = new Error(message || `Request failed with ${response.status}`)
-    ;(error as Error & { status?: number }).status = response.status
-    throw error
+    const message = await response.text().catch(() => "");
+    const error = new Error(
+      message || `Request failed with ${response.status}`,
+    );
+    (error as Error & { status?: number }).status = response.status;
+    throw error;
   }
 
   if (response.status === 204) {
-    return null as T
+    return null as T;
   }
 
-  return (await response.json()) as T
+  return (await response.json()) as T;
 }
 
 async function requestNoJson(path: string, options: RequestOptions = {}) {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${authToken}`,
     ...options.headers,
-  }
+  };
 
   const response = await fetch(buildUrl(path), {
     ...options,
     headers,
-  })
+  });
 
   if (!response.ok) {
-    const message = await response.text().catch(() => '')
-    const error = new Error(message || `Request failed with ${response.status}`)
-    ;(error as Error & { status?: number }).status = response.status
-    throw error
+    const message = await response.text().catch(() => "");
+    const error = new Error(
+      message || `Request failed with ${response.status}`,
+    );
+    (error as Error & { status?: number }).status = response.status;
+    throw error;
   }
 
-  return response
+  return response;
 }
 
 function jsonBody(data: unknown) {
   return {
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(data),
-  }
+  };
 }
 
-export {
-  baseUrl,
-  authToken,
-  requestJson,
-  requestNoJson,
-  jsonBody,
-}
+export { baseUrl, authToken, requestJson, requestNoJson, jsonBody };
