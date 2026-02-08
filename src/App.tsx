@@ -63,10 +63,6 @@ function App() {
             Keys
           </a>
         </nav>
-        <div className="sidebar-footer">
-          <div className="badge">Auth header required</div>
-          <p className="muted">{baseUrl || 'Missing VITE_BASE_URL'}</p>
-        </div>
       </aside>
       <main className="main">
         <header className="topbar">
