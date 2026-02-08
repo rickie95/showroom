@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { authToken, baseUrl, requestJson, requestNoJson } from '../api'
+import { GarageApiV1Client } from '../api'
 
 export default function Overview() {
+  const apiClient = new GarageApiV1Client();
   const [health, setHealth] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
   const [healthMessage, setHealthMessage] = useState('')
   const [totalNodes, setTotalNodes] = useState<number | null>(null)
@@ -29,7 +30,7 @@ export default function Overview() {
     const loadHealth = async () => {
       setHealth('loading')
       try {
-        const data = await requestJson('v1/health')
+        const data = await apiClient.getHealth();
         if (!active) return
 
         setTotalNodes(data.knownNodes)
@@ -37,7 +38,7 @@ export default function Overview() {
         setTotalStorageNodes(data.storageNodes)
         setHealthyStorageNodes(data.storageNodesOk)
         setHealth('ok')
-        setHealthMessage('Cluster reachable')
+        setHealthMessage('Cluster is reachable')
       } catch (error) {
         if (!active) return
         setHealth('error')
