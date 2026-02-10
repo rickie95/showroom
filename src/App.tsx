@@ -67,13 +67,9 @@ function App() {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Storage control</p>
             <h2>{route.page === 'bucket' ? 'Bucket detail' : route.page}</h2>
           </div>
           <div className="topbar-actions">
-            <div className={envMissing ? 'badge danger' : 'badge success'}>
-              {envMissing ? 'Missing env' : 'Connected'}
-            </div>
           </div>
         </header>
         {envMissing ? (

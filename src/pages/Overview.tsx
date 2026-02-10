@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { GarageApiV1Client } from '../api'
+import { AppError, GarageApiV1Client } from '../api'
 
 export default function Overview() {
   const apiClient = new GarageApiV1Client();
-  const [health, setHealth] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
+  const [health, setHealth] = useState< 'loading' | 'healthy' | 'degraded' | `unreacheable` | `error`>('loading')
+  const [healthStatus, setHealthStatus] = useState('')
   const [healthMessage, setHealthMessage] = useState('')
   const [totalNodes, setTotalNodes] = useState<number | null>(null)
   const [connectedNodes, setConnectedNodes] = useState<number | null>(null)
@@ -11,16 +12,18 @@ export default function Overview() {
   const [healthyStorageNodes, setHealthyStorageNodes] = useState<number | null>(null)
 
   const healthLabelMap: Record<typeof health, string> = {
-    idle: 'Degraded',
-    loading: 'Checking',
-    ok: 'Healthy',
-    error: 'Degraded',
+    loading: 'Connecting',
+    healthy: 'Healthy',
+    degraded: 'Degraded',
+    error: `Error`,
+    unreacheable: `Not Reacheable`
   }
   const healthClassMap: Record<typeof health, string> = {
-    idle: '',
     loading: '',
-    ok: 'good',
-    error: 'bad',
+    healthy: 'good',
+    degraded: 'bad',
+    unreacheable: 'bad',
+    error: `error`
   }
   const healthLabel = healthLabelMap[health]
   const healthClass = healthClassMap[health]
@@ -30,17 +33,23 @@ export default function Overview() {
     const loadHealth = async () => {
       setHealth('loading')
       try {
-        const data = await apiClient.getHealth();
         if (!active) return
+        const data = await apiClient.getHealth();
 
+        setHealthStatus(data.status)
         setTotalNodes(data.knownNodes)
         setConnectedNodes(data.connectedNodes)
         setTotalStorageNodes(data.storageNodes)
         setHealthyStorageNodes(data.storageNodesOk)
-        setHealth('ok')
         setHealthMessage('Cluster is reachable')
       } catch (error) {
         if (!active) return
+
+        if (error instanceof AppError) {
+          setHealth('unreacheable')
+          setHealthMessage('Cluster is not reachable')
+          return
+        }
         setHealth('error')
         setHealthMessage(error instanceof Error ? error.message : 'Unavailable')
       }

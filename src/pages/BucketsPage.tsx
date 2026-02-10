@@ -1,111 +1,131 @@
-import { useEffect, useState } from 'react'
-import { requestJson, requestNoJson } from '../api'
-import CopyButton from '../components/CopyButton'
-import Modal from '../components/Modal'
-import Spinner from '../components/Spinner'
-import type { BucketListItem } from '../types'
-import type { RouteState } from '../App'
-import { ensureArray } from '../utils'
+import { useEffect, useState } from "react";
+import { GarageApiV1Client } from "../api";
+import CopyButton from "../components/CopyButton";
+import Modal from "../components/Modal";
+import Spinner from "../components/Spinner";
+import type { BucketListItem } from "../types";
+import type { RouteState } from "../App";
+import { ensureArray } from "../utils";
 
-export default function BucketsPage({ onNavigate }: Readonly<{ onNavigate: (route: RouteState) => void }>) {
-  const [buckets, setBuckets] = useState<BucketListItem[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [localAliasBucket, setLocalAliasBucket] = useState<BucketListItem | null>(null)
-  const [deleteBucket, setDeleteBucket] = useState<BucketListItem | null>(null)
-  const [deleteInput, setDeleteInput] = useState('')
+export default function BucketsPage({
+  onNavigate,
+}: Readonly<{ onNavigate: (route: RouteState) => void }>) {
+  const apiClient = new GarageApiV1Client();
+  const [buckets, setBuckets] = useState<BucketListItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [localAliasBucket, setLocalAliasBucket] =
+    useState<BucketListItem | null>(null);
+  const [deleteBucket, setDeleteBucket] = useState<BucketListItem | null>(null);
+  const [deleteInput, setDeleteInput] = useState("");
 
   const loadBuckets = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const data = await requestJson<BucketListItem[]>('/v1/bucket?list')
-      setBuckets(data)
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Unable to load buckets')
-    } finally {
-      setLoading(false)
-    }
-  }
+    setLoading(true);
+    setError("");
+    await apiClient
+      .getBuckets()
+      .then((response) => setBuckets(response))
+      .catch((error) =>
+        setError(`Unable to load buckets: ${error instanceof Error ? error.message : "Unknown error"}`),
+      )
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
-    loadBuckets()
-  }, [])
+    loadBuckets();
+  }, []);
 
   const handleDelete = async () => {
-    if (!deleteBucket) return
-    try {
-      await requestNoJson(`/v1/bucket?id=${encodeURIComponent(deleteBucket.id)}`, {
-        method: 'DELETE',
-      })
-      setDeleteBucket(null)
-      setDeleteInput('')
-      await loadBuckets()
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Unable to delete bucket')
-    }
-  }
+    if (!deleteBucket) return;
+    await apiClient.getBucketDetails(deleteBucket.id).then(async () => {
+      setDeleteBucket(null);
+      setDeleteInput("");
+      await loadBuckets();
+    }).catch((error) => setError(
+      error instanceof Error ? error.message : "Unable to delete bucket",
+    ));
+  };
 
   return (
     <section className="panel">
       <div className="panel-header">
         <div>
-          <h3>Bucket inventory</h3>
+          <h3>Inventory</h3>
           <p className="muted">All buckets currently stored in Garage.</p>
         </div>
         <button className="primary-button" type="button">
           New Bucket
         </button>
       </div>
-      {loading ? <Spinner /> : null}
-      {error ? <p className="error-text">{error}</p> : null}
       <div className="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Global aliases</th>
-              <th>Local aliases</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {buckets.map((bucket) => (
-              <tr key={bucket.id}>
-                <td className="mono">{bucket.id}</td>
-                <td>{ensureArray(bucket.globalAliases).join(', ') || 'None'}</td>
-                <td>
-                  <button
-                    className="ghost-button"
-                    type="button"
-                    onClick={() => setLocalAliasBucket(bucket)}
-                  >
-                    View local aliases
-                  </button>
-                </td>
-                <td className="actions">
-                  <button
-                    className="ghost-button"
-                    type="button"
-                    onClick={() => {
-                      globalThis.location.hash = `#bucket/${bucket.id}`
-                      onNavigate({ page: 'bucket', bucketId: bucket.id })
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="ghost-button danger"
-                    type="button"
-                    onClick={() => setDeleteBucket(bucket)}
-                  >
-                    Delete
-                  </button>
-                </td>
+        {loading ? (
+          <div className="centered">
+            {" "}
+            <Spinner />{" "}
+          </div>
+        ) : null}
+        {!loading && error ? (
+          <div className="centered">
+            {" "}
+            <span className="error-text centered-child">{error}</span>{" "}
+          </div>
+        ) : null}
+        {!loading && !error ? (
+          <table>
+            <thead>
+              <tr>
+                <th>Global aliases</th>
+                <th>ID</th>
+                <th>Local aliases</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {buckets.map((bucket) => (
+                <tr key={bucket.id}>
+                  <td>
+                    {ensureArray(bucket.globalAliases).join(", ") || "None"}
+                  </td>
+                  <td className="mono">
+                    <CopyButton
+                      label="Copy ID"
+                      className="ghost-button"
+                      value={bucket.id}
+                    />
+                  </td>
+                  <td>
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      onClick={() => setLocalAliasBucket(bucket)}
+                    >
+                      View local aliases
+                    </button>
+                  </td>
+                  <td className="actions">
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      onClick={() => {
+                        globalThis.location.hash = `#bucket/${bucket.id}`;
+                        onNavigate({ page: "bucket", bucketId: bucket.id });
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="ghost-button danger"
+                      type="button"
+                      onClick={() => setDeleteBucket(bucket)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : null}
       </div>
 
       {localAliasBucket ? (
@@ -120,18 +140,25 @@ export default function BucketsPage({ onNavigate }: Readonly<{ onNavigate: (rout
                 </tr>
               </thead>
               <tbody>
-                {ensureArray(localAliasBucket.localAliases).map((alias, index) => {
-                  const keyId = alias.accessKeyId || alias.accessKeyid || ''
-                  return (
-                    <tr key={`${alias.alias}-${index}`}>
-                      <td>{alias.alias}</td>
-                      <td className="mono">{keyId}</td>
-                      <td>
-                        {keyId ? <CopyButton className="ghost-button" value={keyId} /> : null}
-                      </td>
-                    </tr>
-                  )
-                })}
+                {ensureArray(localAliasBucket.localAliases).map(
+                  (alias, index) => {
+                    const keyId = alias.accessKeyId || alias.accessKeyid || "";
+                    return (
+                      <tr key={`${alias.alias}-${index}`}>
+                        <td>{alias.alias}</td>
+                        <td className="mono">{keyId}</td>
+                        <td>
+                          {keyId ? (
+                            <CopyButton
+                              className="ghost-button"
+                              value={keyId}
+                            />
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  },
+                )}
               </tbody>
             </table>
           </div>
@@ -142,8 +169,8 @@ export default function BucketsPage({ onNavigate }: Readonly<{ onNavigate: (rout
         <Modal
           title="Delete bucket"
           onClose={() => {
-            setDeleteBucket(null)
-            setDeleteInput('')
+            setDeleteBucket(null);
+            setDeleteInput("");
           }}
           actions={
             <button
@@ -157,7 +184,8 @@ export default function BucketsPage({ onNavigate }: Readonly<{ onNavigate: (rout
           }
         >
           <p>
-            This action removes the bucket. Type the bucket ID to unlock deletion.
+            This action removes the bucket. Type the bucket ID to unlock
+            deletion.
           </p>
           <div className="stack">
             <div>
@@ -166,7 +194,9 @@ export default function BucketsPage({ onNavigate }: Readonly<{ onNavigate: (rout
             </div>
             <div>
               <p className="eyebrow">Global aliases</p>
-              <p>{ensureArray(deleteBucket.globalAliases).join(', ') || 'None'}</p>
+              <p>
+                {ensureArray(deleteBucket.globalAliases).join(", ") || "None"}
+              </p>
             </div>
             <input
               type="text"
@@ -178,5 +208,5 @@ export default function BucketsPage({ onNavigate }: Readonly<{ onNavigate: (rout
         </Modal>
       ) : null}
     </section>
-  )
+  );
 }

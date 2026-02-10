@@ -1,6 +1,7 @@
 import axios from "axios";
 import type { HealthInfo, Bucket, BucketDetails } from "./model";
-import type { KeyCreateResponse, KeyDetails, KeyListItem } from "./types";
+import type { BucketListItem, KeyCreateResponse, KeyDetails, KeyListItem } from "./types";
+import App from "./App";
 
 const baseUrl = (import.meta.env.VITE_BASE_URL || "").replace(/\/$/, "");
 const authToken = import.meta.env.VITE_AUTH_TOKEN || "";
@@ -26,7 +27,7 @@ export class NotFoundError extends AppError {
 
 interface GarageApiClient {
   getHealth(): Promise<HealthInfo>;
-  getBuckets(): Promise<Bucket[]>;
+  getBuckets(): Promise<BucketListItem[]>;
   getBucketDetails(bucketId: string): Promise<BucketDetails>;
   createBucket?(bucketId: string): Promise<BucketDetails>;
   addKeyToBucket?(
@@ -39,34 +40,40 @@ interface GarageApiClient {
   getKeys(): Promise<KeyListItem[]>;
   getKeyDetails(keyId: string): Promise<KeyDetails>;
   createKey(name?: string | null): Promise<KeyCreateResponse>;
-  updateKeyPermissions(keyId: string, canCreateBucket: boolean): Promise<KeyDetails>;
+  updateKeyPermissions(
+    keyId: string,
+    canCreateBucket: boolean,
+  ): Promise<KeyDetails>;
   deleteKey?(keyId: string): Promise<void>;
 }
 
 export class GarageApiV1Client implements GarageApiClient {
   public async getHealth(): Promise<HealthInfo> {
-    const response = await axios.get(`${baseUrl}/v1/health`, {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
-    });
+    try {
+      const response = await axios.get(`${baseUrl}/v1/health`, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
 
-    if (response.status !== 200) {
-      const message =
-        response.data?.message || `Request failed with ${response.status}`;
-      throw new AppError(message, response.status);
+      if (response.status !== 200) {
+        throw new Error(`Request to /v1/health returned a ${response.status}`);
+      }
+
+      return {
+        status: response.data.status,
+        knownNodes: response.data.knownNodes,
+        connectedNodes: response.data.connectedNodes,
+        storageNodes: response.data.storageNodes,
+        storageNodesOk: response.data.storageNodesOk,
+      } as HealthInfo;
+    } catch (error) {
+      console.log(`Error while trying to get health status: ${error}`);
+      throw new AppError("Cannot connect to the Garage instance.");
     }
-
-    return {
-      status: response.data.status,
-      knownNodes: response.data.knownNodes,
-      connectedNodes: response.data.connectedNodes,
-      storageNodes: response.data.storageNodes,
-      storageNodesOk: response.data.storageNodesOk,
-    } as HealthInfo;
   }
 
-  public async getBuckets(): Promise<Bucket[]> {
+  public async getBuckets(): Promise<BucketListItem[]> {
     const response = await axios.get(`${baseUrl}/v1/bucket?list`, {
       headers: {
         Authorization: `Bearer ${authToken}`,
@@ -75,7 +82,7 @@ export class GarageApiV1Client implements GarageApiClient {
 
     if (response.status !== 200) {
       const message =
-        response.data?.message || `Request failed with ${response.status}`;
+        response.data?.message || `Cannot fetch buckets. Request failed with ${response.status}`;
       throw new AppError(message);
     }
 
@@ -83,7 +90,7 @@ export class GarageApiV1Client implements GarageApiClient {
       id: bucket.id,
       globalAliases: bucket.globalAliases,
       localAliases: bucket.localAliases,
-    })) as Bucket[];
+    })) as BucketListItem[];
   }
 
   public async getBucketDetails(bucketId: string): Promise<BucketDetails> {
@@ -191,11 +198,15 @@ export class GarageApiV1Client implements GarageApiClient {
       headers: {
         Authorization: `Bearer ${authToken}`,
       },
+    }).catch((error) => {
+      console.log(`Failed to fetch keys: ${error}`);
+      throw new AppError("Cannot fetch keys from the Garage instance.");
     });
 
     if (response.status !== 200) {
       const message =
         response.data?.message || `Request failed with ${response.status}`;
+        console.log(`Failed to fetch keys: ${message}`);
       throw new AppError(message, response.status);
     }
 
@@ -302,7 +313,7 @@ export class GarageApiV1Client implements GarageApiClient {
 
     if (response.status !== 204) {
       const message =
-      response.data?.message || `Request failed with ${response.status}`;
+        response.data?.message || `Request failed with ${response.status}`;
       console.log(`Failed to delete key ${keyId}: ${message}`);
       throw new AppError(message, response.status);
     }

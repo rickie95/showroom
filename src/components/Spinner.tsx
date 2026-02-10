@@ -1,10 +1,10 @@
 function Spinner() {
   return (
-    <div className="spinner" aria-label="Loading" role="status">
+    <output className="spinner centered-child" aria-label="Loading">
       <span />
       <span />
       <span />
-    </div>
+    </output>
   )
 }
 

@@ -271,8 +271,8 @@ export default function BucketDetail({
                   {ensureArray(details.keys).map((key) => (
                     <tr key={key.accessKeyId}>
                       <td>{key.name || "Unnamed"}</td>
-                      <td className="mono">
-                        {key.accessKeyId}
+                      <td>
+                        <span className="mono">{key.accessKeyId}</span>
                         <CopyButton
                           className="ghost-button"
                           value={key.accessKeyId}

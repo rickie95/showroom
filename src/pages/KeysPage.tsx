@@ -1,38 +1,41 @@
-import { useEffect, useState } from 'react'
-import { GarageApiV1Client } from '../api'
-import CopyButton from '../components/CopyButton'
-import Modal from '../components/Modal'
-import Spinner from '../components/Spinner'
-import type { KeyCreateResponse, KeyListItem } from '../types'
+import { useEffect, useState } from "react";
+import { GarageApiV1Client } from "../api";
+import CopyButton from "../components/CopyButton";
+import Modal from "../components/Modal";
+import Spinner from "../components/Spinner";
+import type { KeyCreateResponse, KeyListItem } from "../types";
 
 function KeyCreateModal({
   onClose,
   onCreated,
 }: Readonly<{ onClose: () => void; onCreated: () => void }>) {
   const apiClient = new GarageApiV1Client();
-  const [name, setName] = useState('')
-  const [allowCreate, setAllowCreate] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [created, setCreated] = useState<KeyCreateResponse | null>(null)
+  const [name, setName] = useState("");
+  const [allowCreate, setAllowCreate] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [created, setCreated] = useState<KeyCreateResponse | null>(null);
 
   const handleSubmit = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const payload = {
-        name: name || null,
-        allow: allowCreate ? { createBucket: true } : null,
-        deny: allowCreate ? null : { createBucket: true },
-      }
-      const response = await apiClient.createKey(payload.name);
-      setCreated(response)
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Unable to create key')
-    } finally {
-      setLoading(false)
-    }
-  }
+    setLoading(true);
+    setError("");
+    const payload = {
+      name: name || null,
+      allow: allowCreate ? { createBucket: true } : null,
+      deny: allowCreate ? null : { createBucket: true },
+    };
+    await apiClient
+      .createKey(payload.name)
+      .then((response) => setCreated(response))
+      .catch((error) =>
+        setError(
+          error instanceof Error ? error.message : "Unable to create key",
+        ),
+      )
+      .finally(() => {
+        setLoading(false);
+      });
+  };
 
   return (
     <Modal
@@ -44,8 +47,13 @@ function KeyCreateModal({
             Done
           </button>
         ) : (
-          <button className="primary-button" type="button" onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Creating...' : 'Create'}
+          <button
+            className="primary-button"
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? "Creating..." : "Create"}
           </button>
         )
       }
@@ -60,14 +68,21 @@ function KeyCreateModal({
           <div>
             <p className="eyebrow">Secret access key</p>
             <p className="mono">{created.secretAccessKey}</p>
-            <CopyButton className="ghost-button" value={created.secretAccessKey} />
+            <CopyButton
+              className="ghost-button"
+              value={created.secretAccessKey}
+            />
           </div>
         </div>
       ) : (
         <div className="stack">
           <label>
             <span>Key name (optional)</span>
-            <input value={name} onChange={(event) => setName(event.target.value)} type="text" />
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              type="text"
+            />
           </label>
           <label className="checkbox">
             <input
@@ -81,7 +96,7 @@ function KeyCreateModal({
         </div>
       )}
     </Modal>
-  )
+  );
 }
 
 function KeyEditModal({
@@ -89,62 +104,69 @@ function KeyEditModal({
   onClose,
   onSaved,
 }: Readonly<{
-  keyItem: KeyListItem
-  onClose: () => void
-  onSaved: () => void
+  keyItem: KeyListItem;
+  onClose: () => void;
+  onSaved: () => void;
 }>) {
   const apiClient = new GarageApiV1Client();
-  const [name, setName] = useState(keyItem.name || '')
-  const [allowCreate, setAllowCreate] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [loadingInfo, setLoadingInfo] = useState(true)
-  const [error, setError] = useState('')
+  const [name, setName] = useState(keyItem.name || "");
+  const [allowCreate, setAllowCreate] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingInfo, setLoadingInfo] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    let active = true
+    let active = true;
     const loadDetails = async () => {
-      setLoadingInfo(true)
-      try {
-        const response = await apiClient.getKeyDetails(keyItem.id);
-
-        if (!active) return
-        if (response.name !== undefined && response.name !== null) {
-          setName(response.name)
-        }
-        setAllowCreate(Boolean(response.permissions?.createBucket))
-      } catch {
-        if (!active) return
-        setAllowCreate(false)
-      } finally {
-        if (active) setLoadingInfo(false)
-      }
-    }
-    loadDetails()
+      setLoadingInfo(true);
+      await apiClient
+        .getKeyDetails(keyItem.id)
+        .then((response) => {
+          if (!active) return;
+          if (response.name !== undefined && response.name !== null) {
+            setName(response.name);
+          }
+          setAllowCreate(Boolean(response.permissions?.createBucket));
+        })
+        .catch(() => {
+          if (!active) return;
+          setAllowCreate(false);
+        })
+        .finally(() => {
+          if (active) setLoadingInfo(false);
+        });
+    };
+    loadDetails();
     return () => {
-      active = false
-    }
-  }, [keyItem.id])
+      active = false;
+    };
+  }, [keyItem.id]);
 
   const handleSave = async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError("");
     try {
       await apiClient.updateKeyPermissions(keyItem.id, allowCreate);
-      onSaved()
+      onSaved();
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Unable to update key')
+      setError(error instanceof Error ? error.message : "Unable to update key");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Modal
       title="Edit key"
       onClose={onClose}
       actions={
-        <button className="primary-button" type="button" onClick={handleSave} disabled={loading}>
-          {loading ? 'Saving...' : 'Save'}
+        <button
+          className="primary-button"
+          type="button"
+          onClick={handleSave}
+          disabled={loading}
+        >
+          {loading ? "Saving..." : "Save"}
         </button>
       }
     >
@@ -155,7 +177,11 @@ function KeyEditModal({
         </div>
         <label>
           <span>Key name</span>
-          <input value={name} onChange={(event) => setName(event.target.value)} type="text" />
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            type="text"
+          />
         </label>
         <label className="checkbox">
           <input
@@ -170,51 +196,48 @@ function KeyEditModal({
         {error ? <p className="error-text">{error}</p> : null}
       </div>
     </Modal>
-  )
+  );
 }
 
 export default function KeysPage() {
   const apiClient = new GarageApiV1Client();
-  const [keys, setKeys] = useState<KeyListItem[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [createOpen, setCreateOpen] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
-  const [editKey, setEditKey] = useState<KeyListItem | null>(null)
-  const [deleteKey, setDeleteKey] = useState<KeyListItem | null>(null)
-  const [deleteInput, setDeleteInput] = useState('')
+  const [keys, setKeys] = useState<KeyListItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [editKey, setEditKey] = useState<KeyListItem | null>(null);
+  const [deleteKey, setDeleteKey] = useState<KeyListItem | null>(null);
+  const [deleteInput, setDeleteInput] = useState("");
 
   const loadKeys = async () => {
-    setLoading(true)
-    setError('')
-    try {
-
-      const data = await apiClient.getKeys();
-      setKeys(data)
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Unable to load keys')
-    } finally {
-      setLoading(false)
-    }
-  }
+    setLoading(true);
+    setError("");
+    await apiClient
+      .getKeys()
+      .then((response) => setKeys(response))
+      .catch((error) =>
+        setError(
+          error instanceof Error ? error.message : "Unable to load keys",
+        ),
+      )
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
-    loadKeys()
-  }, [])
+    loadKeys();
+  }, []);
 
   const handleDelete = async () => {
-    console.debug('Deleting key', deleteKey)
-    if (!deleteKey) return
-    try {
-      console.debug('DELETE api request key', deleteKey)
-      await apiClient.deleteKey(deleteKey.id);
-      setDeleteKey(null)
-      setDeleteInput('')
-      await loadKeys()
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Unable to delete key')
-    }
-  }
+    console.debug("Deleting key", deleteKey);
+    if (!deleteKey) return;
+    console.info("DELETE api request key", deleteKey);
+    await apiClient.deleteKey(deleteKey.id)
+    .then(() => setDeleteKey(null))
+    .then(() => setDeleteInput(""))
+    .then(() => loadKeys())
+    .catch((error) => setError(error instanceof Error ? error.message : "Unable to delete key"));
+  };
 
   return (
     <section className="panel">
@@ -224,16 +247,25 @@ export default function KeysPage() {
           <p className="muted">Provision and manage storage keys.</p>
         </div>
         <div className="action-row">
-          <button className="ghost-button" type="button" onClick={() => setImportOpen(true)}>
+          <button
+            className="ghost-button"
+            type="button"
+            onClick={() => setImportOpen(true)}
+          >
             Import Key
           </button>
-          <button className="primary-button" type="button" onClick={() => setCreateOpen(true)}>
+          <button
+            className="primary-button"
+            type="button"
+            onClick={() => setCreateOpen(true)}
+          >
             New Key
           </button>
         </div>
       </div>
-      {loading ? <Spinner /> : null}
-      {error ? <p className="error-text">{error}</p> : null}
+      {loading ? <div className="centered"> <Spinner /> </div> : null}
+      {error ? <div className="centered">  <p className="error-text">{error}</p> </div> : null}
+      {!loading && !error ? 
       <div className="table-wrapper">
         <table>
           <thead>
@@ -247,9 +279,13 @@ export default function KeysPage() {
             {keys.map((key) => (
               <tr key={key.id}>
                 <td className="mono">{key.id}</td>
-                <td>{key.name || 'Unnamed'}</td>
+                <td>{key.name || "Unnamed"}</td>
                 <td className="actions">
-                  <button className="ghost-button" type="button" onClick={() => setEditKey(key)}>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    onClick={() => setEditKey(key)}
+                  >
                     Edit
                   </button>
                   <button
@@ -264,14 +300,14 @@ export default function KeysPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </div> : null }
 
       {createOpen ? (
         <KeyCreateModal
           onClose={() => setCreateOpen(false)}
           onCreated={() => {
-            setCreateOpen(false)
-            loadKeys()
+            setCreateOpen(false);
+            loadKeys();
           }}
         />
       ) : null}
@@ -287,8 +323,8 @@ export default function KeysPage() {
           keyItem={editKey}
           onClose={() => setEditKey(null)}
           onSaved={() => {
-            setEditKey(null)
-            loadKeys()
+            setEditKey(null);
+            loadKeys();
           }}
         />
       ) : null}
@@ -297,8 +333,8 @@ export default function KeysPage() {
         <Modal
           title="Delete key"
           onClose={() => {
-            setDeleteKey(null)
-            setDeleteInput('')
+            setDeleteKey(null);
+            setDeleteInput("");
           }}
           actions={
             <button
@@ -319,7 +355,7 @@ export default function KeysPage() {
             </div>
             <div>
               <p className="eyebrow">Name</p>
-              <p>{deleteKey.name || 'Unnamed'}</p>
+              <p>{deleteKey.name || "Unnamed"}</p>
             </div>
             <input
               type="text"
@@ -331,5 +367,5 @@ export default function KeysPage() {
         </Modal>
       ) : null}
     </section>
-  )
+  );
 }
