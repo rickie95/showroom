@@ -1,7 +1,6 @@
 import axios from "axios";
-import type { HealthInfo, Bucket, BucketDetails } from "./model";
+import type { HealthInfo, BucketDetails } from "./model";
 import type { BucketListItem, KeyCreateResponse, KeyDetails, KeyListItem } from "./types";
-import App from "./App";
 
 const baseUrl = (import.meta.env.VITE_BASE_URL || "").replace(/\/$/, "");
 const authToken = import.meta.env.VITE_AUTH_TOKEN || "";
@@ -39,7 +38,7 @@ interface GarageApiClient {
   ): Promise<BucketDetails>;
   getKeys(): Promise<KeyListItem[]>;
   getKeyDetails(keyId: string): Promise<KeyDetails>;
-  createKey(name?: string | null): Promise<KeyCreateResponse>;
+  createKey(createBucket: boolean, name?: string | null): Promise<KeyCreateResponse>;
   updateKeyPermissions(
     keyId: string,
     canCreateBucket: boolean,
@@ -241,7 +240,7 @@ export class GarageApiV1Client implements GarageApiClient {
     } as KeyDetails;
   }
 
-  public async createKey(name?: string | null): Promise<KeyCreateResponse> {
+  public async createKey(canCreate: boolean, name?: string | null): Promise<KeyCreateResponse> {
     const response = await axios.post(
       `${baseUrl}/v1/key`,
       {
@@ -259,6 +258,14 @@ export class GarageApiV1Client implements GarageApiClient {
       const message =
         response.data?.message || `Request failed with ${response.status}`;
       throw new AppError(message, response.status);
+    }
+
+    if (canCreate) {
+      await this.updateKeyPermissions(response.data.accessKeyId, true).catch((error) => {
+        this.deleteKey(response.data.accessKeyId);
+        console.log(`Failed to set permissions for key ${response.data.accessKeyId}: ${error}`);
+        throw new AppError("Key created but failed to set permissions. The key has been deleted, please try again.");
+      });
     }
 
     return {
@@ -280,7 +287,7 @@ export class GarageApiV1Client implements GarageApiClient {
     };
 
     const response = await axios.post(
-      `${baseUrl}/v1/key?${keyId}`,
+      `${baseUrl}/v1/key?id=${keyId}`,
       requestBody,
       {
         headers: {
@@ -297,7 +304,7 @@ export class GarageApiV1Client implements GarageApiClient {
     }
 
     return {
-      id: response.data.id,
+      id: response.data.accessKeyId,
       name: response.data.name,
       permissions: response.data.permissions,
       buckets: response.data.buckets,

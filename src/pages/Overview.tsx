@@ -4,7 +4,6 @@ import { AppError, GarageApiV1Client } from '../api'
 export default function Overview() {
   const apiClient = new GarageApiV1Client();
   const [health, setHealth] = useState< 'loading' | 'healthy' | 'degraded' | `unreacheable` | `error`>('loading')
-  const [healthStatus, setHealthStatus] = useState('')
   const [healthMessage, setHealthMessage] = useState('')
   const [totalNodes, setTotalNodes] = useState<number | null>(null)
   const [connectedNodes, setConnectedNodes] = useState<number | null>(null)
@@ -36,9 +35,9 @@ export default function Overview() {
         if (!active) return
         const data = await apiClient.getHealth();
 
-        setHealthStatus(data.status)
         setTotalNodes(data.knownNodes)
         setConnectedNodes(data.connectedNodes)
+        setHealth(data.status)
         setTotalStorageNodes(data.storageNodes)
         setHealthyStorageNodes(data.storageNodesOk)
         setHealthMessage('Cluster is reachable')

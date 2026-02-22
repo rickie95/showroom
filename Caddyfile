@@ -22,7 +22,7 @@
     header Access-Control-Expose-Headers "Content-Length"
     header Access-Control-Allow-Headers "*"
     header Access-Control-Allow-Methods "*"
-    reverse_proxy http://100.98.146.106:3903 {
+    reverse_proxy http://garage:3903 {
       header_up X-Forwarded-For {remote_host}
       header_up Host {host}
     }

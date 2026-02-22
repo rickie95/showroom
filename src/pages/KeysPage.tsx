@@ -19,13 +19,8 @@ function KeyCreateModal({
   const handleSubmit = async () => {
     setLoading(true);
     setError("");
-    const payload = {
-      name: name || null,
-      allow: allowCreate ? { createBucket: true } : null,
-      deny: allowCreate ? null : { createBucket: true },
-    };
     await apiClient
-      .createKey(payload.name)
+      .createKey(allowCreate, name)
       .then((response) => setCreated(response))
       .catch((error) =>
         setError(
@@ -62,8 +57,8 @@ function KeyCreateModal({
         <div className="stack">
           <div>
             <p className="eyebrow">Access key ID</p>
-            <p className="mono">{created.accessKeyId}</p>
             <CopyButton className="ghost-button" value={created.accessKeyId} />
+            <p className="mono">{created.accessKeyId}</p>
           </div>
           <div>
             <p className="eyebrow">Secret access key</p>
@@ -85,12 +80,17 @@ function KeyCreateModal({
             />
           </label>
           <label className="checkbox">
-            <input
+            <span>Allow this key to create new buckets</span>
+            {/* <input
+              className="checkbox"
               type="checkbox"
               checked={allowCreate}
               onChange={(event) => setAllowCreate(event.target.checked)}
-            />
-            <span>Allow this key to create new buckets</span>
+            /> */}
+            <div className="checkbox-wrapper-3">
+              <input type="checkbox" id="cbx-3" checked={allowCreate} onChange={(event) => setAllowCreate(event.target.checked)} />
+              <label htmlFor="cbx-3" className="toggle"><span></span></label>
+            </div>
           </label>
           {error ? <p className="error-text">{error}</p> : null}
         </div>

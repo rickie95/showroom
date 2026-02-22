@@ -12,7 +12,6 @@ function Modal({ title, onClose, actions, children }: ModalProps) {
       <dialog className="modal-card" open>
         <div className="modal-header">
           <div>
-            <p className="eyebrow">Modal</p>
             <h3>{title}</h3>
           </div>
           <button className="ghost-button" onClick={onClose} type="button">

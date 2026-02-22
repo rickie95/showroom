@@ -7,3 +7,8 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
     restart: unless-stopped
+
+  garage:
+    image: dxflrs/garage:v1.3.1
+    volumes:
+      - ./garage.toml:/etc/garage.toml

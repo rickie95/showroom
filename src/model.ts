@@ -1,5 +1,15 @@
+export const HealthStatus ={
+    Healthy: 'healthy',
+    Degraded: 'degraded',
+    Unreachable: 'unreacheable',
+    Error: 'error',
+    Loading: 'loading'
+} as const;
+
+export type HealthStatus = typeof HealthStatus[keyof typeof HealthStatus];
+
 export interface HealthInfo {
-    status: string
+    status: HealthStatus
     knownNodes: number
     connectedNodes: number
     storageNodes: number
