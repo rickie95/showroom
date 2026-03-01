@@ -277,6 +277,49 @@ export class GarageApiV1Client implements GarageApiClient {
     } as KeyCreateResponse;
   }
 
+  public async importKey(keyId: string, secretAccessKey: string, name? : string | null, canCreate: boolean = false): Promise<KeyDetails> {
+    const response = await axios.post(
+      `${baseUrl}/v1/key/import`,
+      {
+        name: name,
+        accessKeyId: keyId,
+        secretAccessKey: secretAccessKey,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    if (response.status !== 200) {
+      const message =
+        response.data?.message || `Request failed with ${response.status}`;
+      throw new AppError(message, response.status);
+    }
+
+    if (canCreate) {
+      await this.updateKeyPermissions(keyId, true).catch((error) => {
+        this.deleteKey(keyId);
+        console.log(`Failed to set permissions for imported key ${keyId}: ${error}`);
+        throw new AppError("Key imported but failed to set permissions. The key has been deleted, please try again.");
+      });
+    }
+
+    return {
+      id: keyId,
+      name: name || "Imported Key",
+      permissions: {
+        createBucket: canCreate,
+        read: false,
+        write: false,
+        owner: false,
+      },
+      buckets: [],
+    } as KeyDetails;
+  }
+
   public async updateKeyPermissions(
     keyId: string,
     canCreateBucket: boolean,

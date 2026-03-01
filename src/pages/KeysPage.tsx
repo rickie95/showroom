@@ -183,7 +183,7 @@ function KeyEditModal({
             type="text"
           />
         </label>
-        <label className="checkbox">
+        {/* <label className="checkbox">
           <input
             type="checkbox"
             checked={allowCreate}
@@ -191,12 +191,94 @@ function KeyEditModal({
             disabled={loadingInfo}
           />
           <span>Allow this key to create new buckets</span>
-        </label>
+        </label> */}
+        <label className="checkbox">
+            <span>Allow this key to create new buckets</span>
+            {/* <input
+              className="checkbox"
+              type="checkbox"
+              checked={allowCreate}
+              onChange={(event) => setAllowCreate(event.target.checked)}
+            /> */}
+            <div className="checkbox-wrapper-3">
+              <input type="checkbox" id="cbx-3" checked={allowCreate} onChange={(event) => setAllowCreate(event.target.checked)} />
+              <label htmlFor="cbx-3" className="toggle"><span></span></label>
+            </div>
+          </label>
         {loadingInfo ? <Spinner /> : null}
         {error ? <p className="error-text">{error}</p> : null}
       </div>
     </Modal>
   );
+}
+
+function KeyImportModal({
+  onClose,
+  onSaved,
+}: Readonly<{
+  onClose: () => void;
+  onSaved: () => void;
+}>) {
+  const apiClient = new GarageApiV1Client();
+  const [name, setName] = useState("");
+  const [keyId, setKeyId] = useState("");
+  const [keySecret, setKeySecret] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSave = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      await apiClient.importKey(keyId, keySecret, name);
+      onSaved();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to import key");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return <Modal title="Import key" onClose={() => onClose()} actions={
+        <button
+          className="primary-button"
+          type="button"
+          onClick={handleSave}
+          disabled={loading}
+        >
+          {loading ? "Saving..." : "Import"}
+        </button>}>
+          <p>
+            Please provide the necessary information to import an existing key.
+          </p>
+          
+          <div className="stack">
+            <label>
+              <span>Key name (optional)</span>
+              <input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                type="text"
+              />
+            </label>
+            <label>
+              <span>Key Id</span>
+              <input
+                value={keyId}
+                onChange={(event) => setKeyId(event.target.value)}
+                type="text"
+              />
+            </label>
+            <label>
+              <span>Key Secret</span>
+              <input
+                value={keySecret}
+                onChange={(event) => setKeySecret(event.target.value)}
+                type="password"
+              />
+            </label>
+          </div>
+        </Modal>
 }
 
 export default function KeysPage() {
@@ -313,9 +395,13 @@ export default function KeysPage() {
       ) : null}
 
       {importOpen ? (
-        <Modal title="Import key" onClose={() => setImportOpen(false)}>
-          <p>Key import is not defined in the current specs.</p>
-        </Modal>
+        <KeyImportModal
+          onClose={() => setImportOpen(false)}
+          onSaved={() => {
+            setImportOpen(false);
+            loadKeys();
+          }}
+        />
       ) : null}
 
       {editKey ? (
