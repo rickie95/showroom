@@ -10,6 +10,10 @@ import { ensureArray } from "../utils";
 export default function BucketsPage({
   onNavigate,
 }: Readonly<{ onNavigate: (route: RouteState) => void }>) {
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createInput, setCreateInput] = useState("");
+  const [createError, setCreateError] = useState("");
+  const [createLoading, setCreateLoading] = useState(false);
   const apiClient = new GarageApiV1Client();
   const [buckets, setBuckets] = useState<BucketListItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,13 +41,14 @@ export default function BucketsPage({
 
   const handleDelete = async () => {
     if (!deleteBucket) return;
-    await apiClient.getBucketDetails(deleteBucket.id).then(async () => {
+    try {
+      await apiClient.deleteBucket(deleteBucket.id);
       setDeleteBucket(null);
       setDeleteInput("");
       await loadBuckets();
-    }).catch((error) => setError(
-      error instanceof Error ? error.message : "Unable to delete bucket",
-    ));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to delete bucket");
+    }
   };
 
   return (
@@ -53,7 +58,7 @@ export default function BucketsPage({
           <h3>Inventory</h3>
           <p className="muted">All buckets currently stored in Garage.</p>
         </div>
-        <button className="primary-button" type="button">
+        <button className="primary-button" type="button" onClick={() => setCreateOpen(true)}>
           New Bucket
         </button>
       </div>
@@ -161,6 +166,50 @@ export default function BucketsPage({
                 )}
               </tbody>
             </table>
+          </div>
+        </Modal>
+      ) : null}
+
+      {createOpen ? (
+        <Modal
+          title="Create new bucket"
+          onClose={() => {
+            setCreateOpen(false);
+            setCreateInput("");
+            setCreateError("");
+          }}
+          actions={
+            <button
+              className="primary-button"
+              type="button"
+              disabled={!createInput || createLoading}
+              onClick={async () => {
+                setCreateLoading(true);
+                setCreateError("");
+                try {
+                  await apiClient.createBucket(createInput);
+                  setCreateOpen(false);
+                  setCreateInput("");
+                  await loadBuckets();
+                } catch (error) {
+                  setCreateError(error instanceof Error ? error.message : "Unable to create bucket");
+                } finally {
+                  setCreateLoading(false);
+                }
+              }}
+            >
+              {createLoading ? "Creating..." : "Create"}
+            </button>
+          }
+        >
+          <div className="stack">
+            <input
+              type="text"
+              value={createInput}
+              onChange={(event) => setCreateInput(event.target.value)}
+              placeholder="Enter new bucket name"
+            />
+            {createError ? <p className="error-text">{createError}</p> : null}
           </div>
         </Modal>
       ) : null}

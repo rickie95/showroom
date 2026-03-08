@@ -44,9 +44,21 @@ interface GarageApiClient {
     canCreateBucket: boolean,
   ): Promise<KeyDetails>;
   deleteKey?(keyId: string): Promise<void>;
+  deleteBucket?(bucketId: string): Promise<void>;
 }
 
 export class GarageApiV1Client implements GarageApiClient {
+  public async deleteBucket(bucketId: string): Promise<void> {
+    const response = await axios.delete(`${baseUrl}/v1/bucket?id=${bucketId}`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+    if (response.status !== 204) {
+      const message = response.data?.message || `Request failed with ${response.status}`;
+      throw new AppError(message, response.status);
+    }
+  }
   public async getHealth(): Promise<HealthInfo> {
     try {
       const response = await axios.get(`${baseUrl}/v1/health`, {
@@ -124,7 +136,7 @@ export class GarageApiV1Client implements GarageApiClient {
   public async createBucket(bucketId: string): Promise<BucketDetails> {
     const response = await axios.post(
       `${baseUrl}/v1/bucket`,
-      { id: bucketId },
+      { globalAlias: bucketId },
       {
         headers: {
           Authorization: `Bearer ${authToken}`,
@@ -158,12 +170,9 @@ export class GarageApiV1Client implements GarageApiClient {
     write: boolean,
     owner: boolean,
   ): Promise<BucketDetails> {
-    const response = await axios.post(`${baseUrl}/v1/bucket/allow`, {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-        "Content-Type": "application/json",
-      },
-      data: {
+    const response = await axios.post(
+      `${baseUrl}/v1/bucket/allow`,
+      {
         bucketId: bucketId,
         accessKeyId: keyId,
         permissions: {
@@ -172,7 +181,13 @@ export class GarageApiV1Client implements GarageApiClient {
           owner: owner,
         },
       },
-    });
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     if (response.status !== 200) {
       const message =

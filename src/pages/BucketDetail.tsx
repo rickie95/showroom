@@ -179,9 +179,8 @@ export default function BucketDetail({
 
   const handleDelete = async () => {
     try {
-      await requestNoJson(`/v1/bucket?id=${encodeURIComponent(bucketId)}`, {
-        method: "DELETE",
-      });
+      const apiClient = new GarageApiV1Client();
+      await apiClient.deleteBucket(bucketId);
       globalThis.location.hash = "#buckets";
     } catch (error) {
       setError(

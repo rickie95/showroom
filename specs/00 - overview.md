@@ -18,3 +18,5 @@ On the left, there's a menu that allows to reach the following pages:
 
 ## API
 Garage offers API endpoints, request must have an `Authorization` header, using `Bearer AUTH_TOKEN`. AUTH_TOKEN is fetched from env vars. BASE_URL is fetched from vars.
+
+See the API documentation at https://garagehq.deuxfleurs.fr/api/garage-admin-v1.html
