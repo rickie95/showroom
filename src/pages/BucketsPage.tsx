@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { GarageApiV1Client } from "../api";
 import CopyButton from "../components/CopyButton";
 import Modal from "../components/Modal";
@@ -14,7 +14,7 @@ export default function BucketsPage({
   const [createInput, setCreateInput] = useState("");
   const [createError, setCreateError] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
-  const apiClient = new GarageApiV1Client();
+  const apiClient = useMemo(() => new GarageApiV1Client(), []);
   const [buckets, setBuckets] = useState<BucketListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -23,7 +23,7 @@ export default function BucketsPage({
   const [deleteBucket, setDeleteBucket] = useState<BucketListItem | null>(null);
   const [deleteInput, setDeleteInput] = useState("");
 
-  const loadBuckets = async () => {
+  const loadBuckets = useCallback(async () => {
     setLoading(true);
     setError("");
     await apiClient
@@ -33,11 +33,11 @@ export default function BucketsPage({
         setError(`Unable to load buckets: ${error instanceof Error ? error.message : "Unknown error"}`),
       )
       .finally(() => setLoading(false));
-  };
+  }, [apiClient]);
 
   useEffect(() => {
-    loadBuckets();
-  }, []);
+    void loadBuckets();
+  }, [loadBuckets]);
 
   const handleDelete = async () => {
     if (!deleteBucket) return;

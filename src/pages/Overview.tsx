@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AppError, GarageApiV1Client } from '../api'
 
 export default function Overview() {
-  const apiClient = new GarageApiV1Client();
+  const apiClient = useMemo(() => new GarageApiV1Client(), [])
   const [health, setHealth] = useState< 'loading' | 'healthy' | 'degraded' | `unreacheable` | `error`>('loading')
   const [healthMessage, setHealthMessage] = useState('')
   const [totalNodes, setTotalNodes] = useState<number | null>(null)
@@ -59,7 +59,7 @@ export default function Overview() {
     return () => {
       active = false
     }
-  }, [])
+  }, [apiClient])
 
   return (
     <div >

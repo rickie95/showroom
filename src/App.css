@@ -79,6 +79,17 @@
   align-items: center;
 }
 
+.connection-pill {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(62, 38, 26, 0.08);
+  font-size: 0.85rem;
+}
+
 .topbar h2 {
   text-transform: capitalize;
 }
@@ -332,6 +343,8 @@
   padding: 1.25rem 1.5rem;
   border-radius: 16px;
   background: rgba(240, 127, 47, 0.12);
+  display: grid;
+  gap: 1rem;
 }
 
 .stack {
@@ -342,6 +355,10 @@
 .stack label {
   display: grid;
   gap: 0.4rem;
+}
+
+.stack label > span {
+  font-weight: 600;
 }
 
 .action-row {

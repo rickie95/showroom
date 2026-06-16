@@ -1,9 +1,7 @@
 import axios from "axios";
+import { getApiConfig } from "./apiConfig";
 import type { HealthInfo, BucketDetails } from "./model";
 import type { BucketListItem, KeyCreateResponse, KeyDetails, KeyListItem } from "./types";
-
-const baseUrl = (import.meta.env.VITE_BASE_URL || "").replace(/\/$/, "");
-const authToken = import.meta.env.VITE_AUTH_TOKEN || "";
 
 type RequestOptions = Omit<RequestInit, "headers"> & {
   headers?: Record<string, string>;
@@ -23,6 +21,35 @@ export class NotFoundError extends AppError {
     super(message, 404);
   }
 }
+
+function getRequestConfig() {
+  const config = getApiConfig();
+
+  if (!config.baseUrl || !config.authToken) {
+    throw new AppError(
+      "Save a base URL and auth token before making requests.",
+    );
+  }
+
+  return config;
+}
+
+function authHeaders(authToken: string) {
+  return {
+    Authorization: `Bearer ${authToken}`,
+  };
+}
+
+type BucketApiResponse = {
+  id: string;
+  globalAliases?: string[];
+  localAliases?: BucketListItem["localAliases"];
+};
+
+type KeyApiResponse = {
+  id: string;
+  name?: string | null;
+};
 
 interface GarageApiClient {
   getHealth(): Promise<HealthInfo>;
@@ -49,10 +76,9 @@ interface GarageApiClient {
 
 export class GarageApiV1Client implements GarageApiClient {
   public async deleteBucket(bucketId: string): Promise<void> {
+    const { baseUrl, authToken } = getRequestConfig();
     const response = await axios.delete(`${baseUrl}/v1/bucket?id=${bucketId}`, {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
+      headers: authHeaders(authToken),
     });
     if (response.status !== 204) {
       const message = response.data?.message || `Request failed with ${response.status}`;
@@ -61,10 +87,9 @@ export class GarageApiV1Client implements GarageApiClient {
   }
   public async getHealth(): Promise<HealthInfo> {
     try {
+      const { baseUrl, authToken } = getRequestConfig();
       const response = await axios.get(`${baseUrl}/v1/health`, {
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
+        headers: authHeaders(authToken),
       });
 
       if (response.status !== 200) {
@@ -85,10 +110,9 @@ export class GarageApiV1Client implements GarageApiClient {
   }
 
   public async getBuckets(): Promise<BucketListItem[]> {
+    const { baseUrl, authToken } = getRequestConfig();
     const response = await axios.get(`${baseUrl}/v1/bucket?list`, {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
+      headers: authHeaders(authToken),
     });
 
     if (response.status !== 200) {
@@ -97,7 +121,7 @@ export class GarageApiV1Client implements GarageApiClient {
       throw new AppError(message);
     }
 
-    return response.data.map((bucket: any) => ({
+    return response.data.map((bucket: BucketApiResponse) => ({
       id: bucket.id,
       globalAliases: bucket.globalAliases,
       localAliases: bucket.localAliases,
@@ -105,10 +129,9 @@ export class GarageApiV1Client implements GarageApiClient {
   }
 
   public async getBucketDetails(bucketId: string): Promise<BucketDetails> {
+    const { baseUrl, authToken } = getRequestConfig();
     const response = await axios.get(`${baseUrl}/v1/bucket?id=${bucketId}`, {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
+      headers: authHeaders(authToken),
     });
 
     if (response.status === 404) {
@@ -134,12 +157,13 @@ export class GarageApiV1Client implements GarageApiClient {
   }
 
   public async createBucket(bucketId: string): Promise<BucketDetails> {
+    const { baseUrl, authToken } = getRequestConfig();
     const response = await axios.post(
       `${baseUrl}/v1/bucket`,
       { globalAlias: bucketId },
       {
         headers: {
-          Authorization: `Bearer ${authToken}`,
+          ...authHeaders(authToken),
           "Content-Type": "application/json",
         },
       },
@@ -170,6 +194,7 @@ export class GarageApiV1Client implements GarageApiClient {
     write: boolean,
     owner: boolean,
   ): Promise<BucketDetails> {
+    const { baseUrl, authToken } = getRequestConfig();
     const response = await axios.post(
       `${baseUrl}/v1/bucket/allow`,
       {
@@ -183,7 +208,7 @@ export class GarageApiV1Client implements GarageApiClient {
       },
       {
         headers: {
-          Authorization: `Bearer ${authToken}`,
+          ...authHeaders(authToken),
           "Content-Type": "application/json",
         },
       }
@@ -208,10 +233,9 @@ export class GarageApiV1Client implements GarageApiClient {
   }
 
   public async getKeys(): Promise<KeyListItem[]> {
+    const { baseUrl, authToken } = getRequestConfig();
     const response = await axios.get(`${baseUrl}/v1/key?list`, {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
+      headers: authHeaders(authToken),
     }).catch((error) => {
       console.log(`Failed to fetch keys: ${error}`);
       throw new AppError("Cannot fetch keys from the Garage instance.");
@@ -224,17 +248,16 @@ export class GarageApiV1Client implements GarageApiClient {
       throw new AppError(message, response.status);
     }
 
-    return response.data.map((key: any) => ({
+    return response.data.map((key: KeyApiResponse) => ({
       id: key.id,
       name: key.name,
     })) as KeyListItem[];
   }
 
   public async getKeyDetails(keyId: string): Promise<KeyDetails> {
+    const { baseUrl, authToken } = getRequestConfig();
     const response = await axios.get(`${baseUrl}/v1/key?id=${keyId}`, {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
+      headers: authHeaders(authToken),
     });
 
     if (response.status === 404) {
@@ -256,6 +279,7 @@ export class GarageApiV1Client implements GarageApiClient {
   }
 
   public async createKey(canCreate: boolean, name?: string | null): Promise<KeyCreateResponse> {
+    const { baseUrl, authToken } = getRequestConfig();
     const response = await axios.post(
       `${baseUrl}/v1/key`,
       {
@@ -263,7 +287,7 @@ export class GarageApiV1Client implements GarageApiClient {
       },
       {
         headers: {
-          Authorization: `Bearer ${authToken}`,
+          ...authHeaders(authToken),
           "Content-Type": "application/json",
         },
       },
@@ -293,6 +317,7 @@ export class GarageApiV1Client implements GarageApiClient {
   }
 
   public async importKey(keyId: string, secretAccessKey: string, name? : string | null, canCreate: boolean = false): Promise<KeyDetails> {
+    const { baseUrl, authToken } = getRequestConfig();
     const response = await axios.post(
       `${baseUrl}/v1/key/import`,
       {
@@ -302,7 +327,7 @@ export class GarageApiV1Client implements GarageApiClient {
       },
       {
         headers: {
-          Authorization: `Bearer ${authToken}`,
+          ...authHeaders(authToken),
           "Content-Type": "application/json",
         },
       },
@@ -339,6 +364,7 @@ export class GarageApiV1Client implements GarageApiClient {
     keyId: string,
     canCreateBucket: boolean,
   ): Promise<KeyDetails> {
+    const { baseUrl, authToken } = getRequestConfig();
     const requestBody = {
       allow: canCreateBucket ? { createBucket: true } : null,
       deny: canCreateBucket ? null : { createBucket: true },
@@ -349,7 +375,7 @@ export class GarageApiV1Client implements GarageApiClient {
       requestBody,
       {
         headers: {
-          Authorization: `Bearer ${authToken}`,
+          ...authHeaders(authToken),
           "Content-Type": "application/json",
         },
       },
@@ -370,10 +396,9 @@ export class GarageApiV1Client implements GarageApiClient {
   }
 
   public async deleteKey(keyId: string): Promise<void> {
+    const { baseUrl, authToken } = getRequestConfig();
     const response = await axios.delete(`${baseUrl}/v1/key?id=${keyId}`, {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
+      headers: authHeaders(authToken),
     });
 
     if (response.status !== 204) {
@@ -385,10 +410,7 @@ export class GarageApiV1Client implements GarageApiClient {
   }
 }
 
-function buildUrl(path: string) {
-  if (!baseUrl) {
-    return path;
-  }
+function buildUrl(path: string, baseUrl: string) {
   if (path.startsWith("http://") || path.startsWith("https://")) {
     return path;
   }
@@ -396,12 +418,13 @@ function buildUrl(path: string) {
 }
 
 async function requestJson<T>(path: string, options: RequestOptions = {}) {
+  const { baseUrl, authToken } = getRequestConfig();
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${authToken}`,
+    ...authHeaders(authToken),
     ...options.headers,
   };
 
-  const response = await fetch(buildUrl(path), {
+  const response = await fetch(buildUrl(path, baseUrl), {
     ...options,
     headers,
   });
@@ -423,12 +446,13 @@ async function requestJson<T>(path: string, options: RequestOptions = {}) {
 }
 
 async function requestNoJson(path: string, options: RequestOptions = {}) {
+  const { baseUrl, authToken } = getRequestConfig();
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${authToken}`,
+    ...authHeaders(authToken),
     ...options.headers,
   };
 
-  const response = await fetch(buildUrl(path), {
+  const response = await fetch(buildUrl(path, baseUrl), {
     ...options,
     headers,
   });
@@ -454,4 +478,4 @@ function jsonBody(data: unknown) {
   };
 }
 
-export { baseUrl, authToken, requestJson, requestNoJson, jsonBody };
+export { requestJson, requestNoJson, jsonBody };

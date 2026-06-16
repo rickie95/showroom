@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { GarageApiV1Client } from "../api";
 import CopyButton from "../components/CopyButton";
 import Modal from "../components/Modal";
@@ -9,7 +9,7 @@ function KeyCreateModal({
   onClose,
   onCreated,
 }: Readonly<{ onClose: () => void; onCreated: () => void }>) {
-  const apiClient = new GarageApiV1Client();
+  const apiClient = useMemo(() => new GarageApiV1Client(), []);
   const [name, setName] = useState("");
   const [allowCreate, setAllowCreate] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -108,7 +108,7 @@ function KeyEditModal({
   onClose: () => void;
   onSaved: () => void;
 }>) {
-  const apiClient = new GarageApiV1Client();
+  const apiClient = useMemo(() => new GarageApiV1Client(), []);
   const [name, setName] = useState(keyItem.name || "");
   const [allowCreate, setAllowCreate] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -140,7 +140,7 @@ function KeyEditModal({
     return () => {
       active = false;
     };
-  }, [keyItem.id]);
+  }, [apiClient, keyItem.id]);
 
   const handleSave = async () => {
     setLoading(true);
@@ -219,7 +219,7 @@ function KeyImportModal({
   onClose: () => void;
   onSaved: () => void;
 }>) {
-  const apiClient = new GarageApiV1Client();
+  const apiClient = useMemo(() => new GarageApiV1Client(), []);
   const [name, setName] = useState("");
   const [keyId, setKeyId] = useState("");
   const [keySecret, setKeySecret] = useState("");
@@ -277,14 +277,15 @@ function KeyImportModal({
                 type="password"
               />
             </label>
+            {error ? <p className="error-text">{error}</p> : null}
           </div>
         </Modal>
 }
 
 export default function KeysPage() {
-  const apiClient = new GarageApiV1Client();
+  const apiClient = useMemo(() => new GarageApiV1Client(), []);
   const [keys, setKeys] = useState<KeyListItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -292,7 +293,7 @@ export default function KeysPage() {
   const [deleteKey, setDeleteKey] = useState<KeyListItem | null>(null);
   const [deleteInput, setDeleteInput] = useState("");
 
-  const loadKeys = async () => {
+  const loadKeys = useCallback(async () => {
     setLoading(true);
     setError("");
     await apiClient
@@ -304,11 +305,30 @@ export default function KeysPage() {
         ),
       )
       .finally(() => setLoading(false));
-  };
+  }, [apiClient]);
 
   useEffect(() => {
-    loadKeys();
-  }, []);
+    let active = true;
+    const loadInitialKeys = async () => {
+      try {
+        const response = await apiClient.getKeys();
+        if (!active) return;
+        setKeys(response);
+      } catch (error) {
+        if (!active) return;
+        setError(
+          error instanceof Error ? error.message : "Unable to load keys",
+        );
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    void loadInitialKeys();
+    return () => {
+      active = false;
+    };
+  }, [apiClient]);
 
   const handleDelete = async () => {
     console.debug("Deleting key", deleteKey);

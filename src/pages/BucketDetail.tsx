@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { GarageApiV1Client, requestJson, requestNoJson } from "../api";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { GarageApiV1Client, requestJson } from "../api";
 import CopyButton from "../components/CopyButton";
 import Modal from "../components/Modal";
 import Spinner from "../components/Spinner";
@@ -15,7 +15,7 @@ function AddKeyModal({
   onClose: () => void;
   onAdded: () => void;
 }>) {
-  const apiClient = new GarageApiV1Client();
+  const apiClient = useMemo(() => new GarageApiV1Client(), []);
   const [keys, setKeys] = useState<KeyListItem[]>([]);
   const [selectedKey, setSelectedKey] = useState("");
   const [permissions, setPermissions] = useState({
@@ -45,7 +45,7 @@ function AddKeyModal({
     return () => {
       active = false;
     };
-  }, []);
+  }, [apiClient]);
 
   const handleAdd = async () => {
     if (!selectedKey) return;
@@ -153,8 +153,9 @@ export default function BucketDetail({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
   const [addKeyOpen, setAddKeyOpen] = useState(false);
+  const apiClient = useMemo(() => new GarageApiV1Client(), []);
 
-  const loadDetails = async () => {
+  const loadDetails = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -171,15 +172,14 @@ export default function BucketDetail({
     } finally {
       setLoading(false);
     }
-  };
+  }, [bucketId]);
 
   useEffect(() => {
-    loadDetails();
-  }, [bucketId]);
+    void loadDetails();
+  }, [loadDetails]);
 
   const handleDelete = async () => {
     try {
-      const apiClient = new GarageApiV1Client();
       await apiClient.deleteBucket(bucketId);
       globalThis.location.hash = "#buckets";
     } catch (error) {

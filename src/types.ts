@@ -3,22 +3,30 @@ export type KeyListItem = {
   name?: string | null
 }
 
+export type BucketPermissionSet = {
+  read: boolean
+  write: boolean
+  owner: boolean
+}
+
+export type BucketAccessItem = {
+  id: string
+  globalAliases?: string[]
+  localAliases?: Array<{
+    alias: string
+    accessKeyId?: string
+    accessKeyid?: string
+  }>
+  permissions: BucketPermissionSet
+}
+
 export type KeyDetails = {
   id: string
   name?: string | null
   permissions: {
     createBucket: boolean
   }
-  buckets: Array<{
-    id: string
-    globalAliases?: string[]
-    localAliases?: Array<any>
-    permissions: {
-      read: boolean
-      write: boolean
-      owner: boolean
-    }
-  }>
+  buckets: BucketAccessItem[]
 }
 
 export type KeyCreateResponse = {
@@ -28,7 +36,7 @@ export type KeyCreateResponse = {
   permissions?: {
     createBucket: boolean
   }
-  buckets: Array<any>
+  buckets: BucketAccessItem[]
 }
 
 export type BucketListItem = {
@@ -67,5 +75,4 @@ export type BucketDetails = {
     maxObjects?: number | null
   }
 }
-
 
