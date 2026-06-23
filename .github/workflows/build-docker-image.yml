@@ -22,6 +22,7 @@ jobs:
         with:
           node-version: 24
           cache: "npm"
+      - run: npm ci
       - run: npm run build
 
       - name: Log in to GitHub Container Registry
