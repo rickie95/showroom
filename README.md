@@ -1,5 +1,7 @@
 # Showroom
 
+![](./assets/logo_rect_large.png)
+
 ## Overview
 
 **Showroom** is frontend for [Garage](https://garagehq.deuxfleurs.fr/), an S3-compatible object storage service. Garage is great, but lacks an UI. With Showroom you can:
