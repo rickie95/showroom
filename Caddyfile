@@ -1,8 +1,8 @@
 :80 {
-    # Root dei file statici della webapp
+    # Static file root for the webapp
     root * /usr/share/caddy
 
-    # Gestione delle richieste OPTIONS (CORS preflight) per TUTTI i percorsi
+    # Handles OPTIONS requests for all paths
     @options {
         method OPTIONS
     }
@@ -15,8 +15,7 @@
         respond "" 200
     }
 
-    # 1. SPLIT: Richieste che iniziano con /api
-    # Vengono inoltrate al tuo server backend
+    # Everything on /api/* goes through reverse_proxy
     handle /api/* {
         header Access-Control-Allow-Origin "*"
         header Access-Control-Max-Age "3600"
@@ -26,13 +25,13 @@
 
         uri strip_prefix /api
 
-        reverse_proxy http://100.98.146.106:3903 {
+        reverse_proxy {$SHOWROOM_API_UPSTREAM} {
             header_up X-Forwarded-For {remote_host}
             header_up Host {host}
         }
     }
 
-    # 2. SPLIT: Tutto il resto serve la Webapp Vite
+    # Everything else goes to the webapp
     handle {
         header Access-Control-Allow-Origin "*"
         header Access-Control-Max-Age "3600"
@@ -40,8 +39,7 @@
         header Access-Control-Allow-Headers "*"
         header Access-Control-Allow-Methods "*"
 
-        # Cerca il file richiesto. Se non esiste (es. route di React/Vue/Svelte),
-        # rimanda a index.html per far gestire il routing al frontend.
+        # fallback to index.html for routing
         try_files {path} /index.html
         file_server
     }

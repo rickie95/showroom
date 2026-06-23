@@ -1,14 +1,12 @@
-
 services:
-  caddy:
-    image: caddy:latest
-    ports:
-      - "3903:80"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-    restart: unless-stopped
-
   garage:
     image: dxflrs/garage:v1.3.1
     volumes:
       - ./garage.toml:/etc/garage.toml
+
+  showroom:
+    image: showroom:latest
+    ports:
+      - "8090:80"
+    environment:
+      - SHOWROOM_API_UPSTREAM=${SHOWROOM_API_UPSTREAM:-http://garage:3903}
